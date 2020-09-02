@@ -3,7 +3,7 @@ package google_pubsub
 import (
 	"cloud.google.com/go/pubsub"
 
-	"stalk/collectors"
+	"github.com/pfortin-urbn/stalk/collectors"
 )
 
 type PubSubCollector struct {

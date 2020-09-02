@@ -2,10 +2,11 @@ package nsq
 
 import (
 	"os"
-	"stalk/collectors"
 	"time"
 
 	"github.com/nsqio/go-nsq"
+
+	"github.com/pfortin-urbn/stalk/collectors"
 )
 
 var nsqHost = os.Getenv("NSQ_HOST")

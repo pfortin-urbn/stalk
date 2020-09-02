@@ -1,4 +1,4 @@
-module stalk
+module github.com/pfortin-urbn/stalk
 
 go 1.14
 

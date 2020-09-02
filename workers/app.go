@@ -4,9 +4,9 @@ import (
 	"errors"
 	"fmt"
 
-	"stalk/collectors"
-	"stalk/collectors/aws"
-	"stalk/collectors/nsq"
+	"github.com/pfortin-urbn/stalk/collectors"
+	"github.com/pfortin-urbn/stalk/collectors/aws"
+	"github.com/pfortin-urbn/stalk/collectors/nsq"
 )
 
 func businessLogic(msg []byte) *collectors.Result {
