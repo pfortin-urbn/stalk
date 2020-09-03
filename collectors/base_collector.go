@@ -93,7 +93,7 @@ func (collector *BaseCollector) ProcessMessageResult(msg MessageWrapper, result 
 		Message:     msg.Message,
 	}
 
-	if result.Fatal || (result.Err != nil && result.Retry == true && msg.Retries >= collector.MaxRetries) {
+	if result.Fatal || (result.Err != nil && result.Retry == true && msg.Retries >= collector.MaxRetries-1) {
 		//Publish to Error Queue
 		collector.PublishMessage(message, 0, true)
 		return
