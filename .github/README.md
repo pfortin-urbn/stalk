@@ -1,5 +1,5 @@
 # Stalk
-## The best part of the celery!!!
+## The best part of the celery!!!  (who eats the leaves anyway)
 
 Generalized async message queue processing.  You Stalk app contains two parts the Collector, 
 which is provided for you, and the business logic, you provide this. `workers/app.go` shows a toy example.
