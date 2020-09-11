@@ -23,10 +23,12 @@ type BaseCollector struct {
 	Sleeping                     bool
 	earlyAck                     bool
 	PollingPeriod                int
+	PollingLimit                 int
 	MaxPollingPeriod             int
 	MaxRetries                   int
 	RetryIntervalSecs            int64
 	SourceTopic                  string
+	SourceSubscription           string
 	ErrorTopic                   string
 	ApiPort                      int
 	Sleep                        func()
