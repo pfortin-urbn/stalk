@@ -93,9 +93,7 @@ func (collector *SqsCollector) PollForMessages() {
 				collector.ProcessExponentialBackoff(err)
 				for _, msg := range msgs {
 					result := collector.BusinessProcessor(msg.MessageBody) //Business logic
-					if result.Err != nil {
-						collector.ProcessMessageResult(msg, result)
-					}
+					collector.ProcessMessageResult(msg, result)
 				}
 			}
 			go collector.timeout()
