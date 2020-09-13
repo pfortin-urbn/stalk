@@ -6,12 +6,15 @@ import (
 	"math"
 	"net/http"
 
+	uuid "github.com/satori/go.uuid"
+
 	"github.com/labstack/echo"
 	"github.com/labstack/echo/middleware"
 )
 
 type BaseCollector struct {
 	Collector
+	CollectorId                  string
 	CollectorType                string
 	ChannelToInitiatePollRequest chan bool
 	ChannelDone                  chan bool
@@ -35,7 +38,12 @@ type BaseCollector struct {
 }
 
 func CreateBaseCollector(collectorOptions CollectorOptions) *BaseCollector {
+	collectorId := collectorOptions.CollectorId
+	if collectorId == "" {
+		collectorId = uuid.NewV4().String()
+	}
 	bc := &BaseCollector{
+		CollectorId:                  collectorId,
 		ChannelToInitiatePollRequest: make(chan bool),
 		ChannelDone:                  make(chan bool),
 		Retrying:                     false,
@@ -119,7 +127,8 @@ func (collector *BaseCollector) collectorApi() {
 	// Route => handler
 	e.GET("/health", func(c echo.Context) error {
 		return c.JSON(http.StatusOK, map[string]interface{}{
-			"sleeping": collector.Sleeping,
+			"collector_id": collector.CollectorId,
+			"sleeping":     collector.Sleeping,
 		})
 	})
 	e.GET("/sleep", func(c echo.Context) error {
