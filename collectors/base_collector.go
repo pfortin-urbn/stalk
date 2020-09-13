@@ -1,6 +1,7 @@
 package collectors
 
 import (
+	"fmt"
 	"log"
 	"math"
 	"net/http"
@@ -24,6 +25,7 @@ type BaseCollector struct {
 	RetryIntervalSecs            int64
 	SourceTopic                  string
 	ErrorTopic                   string
+	ApiPort                      int
 	Sleep                        func()
 	Wake                         func()
 	BusinessProcessor            func([]byte) *Result
@@ -46,6 +48,7 @@ func CreateBaseCollector(collectorOptions CollectorOptions) *BaseCollector {
 		RetryIntervalSecs:            collectorOptions.RetryIntervalSecs,
 		SourceTopic:                  collectorOptions.SourceTopic,
 		ErrorTopic:                   collectorOptions.ErrorTopic,
+		ApiPort:                      collectorOptions.ApiPort,
 		BusinessProcessor:            collectorOptions.BusinessProcessor,
 		GetMessages:                  collectorOptions.GetMessages,
 		PublishMessage:               collectorOptions.PublishMessage,
@@ -132,5 +135,9 @@ func (collector *BaseCollector) collectorApi() {
 		})
 	})
 	// Start server
-	e.Logger.Fatal(e.Start(":1323"))
+	apiPort := collector.ApiPort
+	if apiPort == 0 {
+		apiPort = 1323
+	}
+	e.Logger.Fatal(e.Start(fmt.Sprintf(":%d", apiPort)))
 }

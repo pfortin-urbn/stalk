@@ -33,6 +33,7 @@ type CollectorOptions struct {
 	ErrorTopic        string
 	Region            string
 	AccountID         string
+	ApiPort           int
 	BusinessProcessor func([]byte) *Result
 	GetMessages       func() ([]MessageWrapper, error)
 	PublishMessage    func(message *MessageWrapper, delaySeconds int64, errFlag bool) error
