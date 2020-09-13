@@ -19,7 +19,10 @@ var Endpoint = os.Getenv("AWS_ENDPOINT") //SQS Proxy?
 type SqsCollector struct {
 	*collectors.BaseCollector
 	SqsClient *sqs.SQS
+	scale     int
 }
+
+var sqsCollectors = make([]*SqsCollector, 0)
 
 func CreateSqsCollector(collectorOptions collectors.CollectorOptions) (*SqsCollector, error) {
 	awsConfig := &aws.Config{
@@ -62,8 +65,23 @@ func CreateSqsCollector(collectorOptions collectors.CollectorOptions) (*SqsColle
 	sc.BaseCollector = collectors.CreateBaseCollector(collectorOptions)
 	sc.SqsClient = client
 
-	go sc.PollForMessages()
+	sc.scale = 1
+
 	return sc, nil
+}
+
+func Scale(numCollectors int) bool {
+	newScale := numCollectors - len(sqsCollectors)
+	for x := newScale; x != 0; {
+		if newScale > 0 {
+			//remove a collector
+			x--
+		} else {
+			//add a collector
+			x--
+		}
+	}
+	return true
 }
 
 func (collector *SqsCollector) Sleep() {
@@ -84,6 +102,7 @@ func (collector *SqsCollector) timeout() {
 // be aware of how to call the Library Methods for exponential backoff
 // and Process Message Results from the business logic
 func (collector *SqsCollector) PollForMessages() {
+	go collector.timeout()
 	for {
 		select {
 		case <-collector.ChannelToInitiatePollRequest:

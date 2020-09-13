@@ -4,6 +4,7 @@ package collectors
 type Collector interface {
 	Sleep()
 	Wake()
+	Scale(int) bool
 	GetMessages() ([]MessageWrapper, error)
 	PublishMessage(message *MessageWrapper, delaySeconds int64, errFlag bool) error
 	AckMessage(receiptHandle string) error

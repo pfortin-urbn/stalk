@@ -12,6 +12,7 @@ import (
 var nsqHost = os.Getenv("NSQ_HOST")
 
 type NsqCollector struct {
+	scale int
 	*collectors.BaseCollector
 	Consumer *nsq.Consumer
 	Producer *nsq.Producer
@@ -51,6 +52,8 @@ func CreateNsqCollector(collectorOptions collectors.CollectorOptions) (*NsqColle
 
 	nsqCollector.BaseCollector = collectors.CreateBaseCollector(collectorOptions)
 
+	nsqCollector.scale = 1
+
 	return nsqCollector, nil
 }
 
@@ -63,7 +66,13 @@ func (collector *NsqCollector) Sleep() {
 //Wake -
 func (collector *NsqCollector) Wake() {
 	collector.Sleeping = false
-	collector.Consumer.ChangeMaxInFlight(1) // 1 is the nsq client default way too low
+	collector.Consumer.ChangeMaxInFlight(collector.scale)
+}
+
+func (collector *NsqCollector) Scale(numCollectors int) bool {
+	collector.scale = numCollectors
+	collector.Consumer.ChangeMaxInFlight(collector.scale)
+	return true
 }
 
 //HandleMessage - Received messages from NSQ one at a time.

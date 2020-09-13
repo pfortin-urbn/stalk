@@ -53,3 +53,14 @@ message queue are welcome.
 	- **PublishMessage**(message *collectors.MessageWrapper, _ int64, errFlag bool) error
 	- **AckMessage**(receiptHandle string) error
 		- if no Acks are required like NSQ return nil is fine.
+
+
+TODO:
+- Scale collectors up/down
+    -- poller
+        --- .scale = default 1
+        --- goroutine at pollForMessage
+    -- nsq
+        --- collector.Consumer.ChangeMaxInFlight(x)
+    -- google pubsub
+        --- ??
