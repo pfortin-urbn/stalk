@@ -25,13 +25,14 @@ func RunAwsCollector() {
 	var err error
 	var options = collectors.CollectorOptions{
 		Region:            "us-east-1",
-		AccountID:         "478989820108",
+		AccountID:         "794373491471",
 		PollingPeriod:     10,
 		MaxPollingPeriod:  60,
 		MaxRetries:        3,
 		RetryIntervalSecs: 60,
-		SourceTopic:       "PAUL_TEST",
-		ErrorTopic:        "PAUL_TILES",
+		SourceTopic:       "input",
+		ErrorTopic:        "error",
+		ApiPort:           8080,
 		BusinessProcessor: businessLogic,
 		GetMessages:       nil,
 		PublishMessage:    nil,
@@ -65,7 +66,7 @@ func RunNsqCollector() {
 }
 
 func main() {
-	RunNsqCollector()
+	RunAwsCollector()
 
 	waitCh := make(chan bool)
 	<-waitCh
