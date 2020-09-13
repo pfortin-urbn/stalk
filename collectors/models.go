@@ -26,6 +26,7 @@ type MessageWrapper struct {
 }
 
 type CollectorOptions struct {
+	CollectorId       string
 	PollingPeriod     int
 	MaxPollingPeriod  int
 	MaxRetries        int
