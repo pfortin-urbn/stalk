@@ -7,7 +7,7 @@ type Collector interface {
 	Scale(int) bool
 	GetMessages() ([]MessageWrapper, error)
 	PublishMessage(message *MessageWrapper, delaySeconds int64, errFlag bool) error
-	AckMessage(receiptHandle string) error
+	AckMessage(message MessageWrapper) error
 }
 
 type Result struct {
@@ -26,20 +26,22 @@ type MessageWrapper struct {
 }
 
 type CollectorOptions struct {
-	CollectorId       string
-	PollingPeriod     int
-	MaxPollingPeriod  int
-	MaxRetries        int
-	RetryIntervalSecs int64
-	SourceTopic       string
-	ErrorTopic        string
-	Region            string
-	AccountID         string
-	ApiPort           int
-	BusinessProcessor func([]byte) *Result
-	GetMessages       func() ([]MessageWrapper, error)
-	PublishMessage    func(message *MessageWrapper, delaySeconds int64, errFlag bool) error
-	AckMessage        func(receiptHandle string) error
-	Sleep             func()
-	Wake              func()
+	CollectorId        string
+	PollingPeriod      int
+	MaxPollingPeriod   int
+	MaxRetries         int
+	RetryIntervalSecs  int64
+	SourceTopic        string
+	ErrorTopic         string
+	Region             string
+	AccountID          string
+	ApiPort            int
+	PollingLimit       int
+	SourceSubscription string
+	BusinessProcessor  func([]byte) *Result
+	GetMessages        func() ([]MessageWrapper, error)
+	PublishMessage     func(message *MessageWrapper, delaySeconds int64, errFlag bool) error
+	AckMessage         func(message MessageWrapper) error
+	Sleep              func()
+	Wake               func()
 }

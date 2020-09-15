@@ -23,12 +23,10 @@ type BaseCollector struct {
 	Sleeping                     bool
 	earlyAck                     bool
 	PollingPeriod                int
-	PollingLimit                 int
 	MaxPollingPeriod             int
 	MaxRetries                   int
 	RetryIntervalSecs            int64
 	SourceTopic                  string
-	SourceSubscription           string
 	ErrorTopic                   string
 	ApiPort                      int
 	Sleep                        func()
@@ -36,7 +34,7 @@ type BaseCollector struct {
 	BusinessProcessor            func([]byte) *Result
 	GetMessages                  func() ([]MessageWrapper, error)
 	PublishMessage               func(message *MessageWrapper, delaySeconds int64, errFlag bool) error
-	AckMessage                   func(receiptHandle string) error
+	AckMessage                   func(message MessageWrapper) error
 }
 
 func CreateBaseCollector(collectorOptions CollectorOptions) *BaseCollector {
@@ -75,7 +73,7 @@ func CreateBaseCollector(collectorOptions CollectorOptions) *BaseCollector {
 func (collector *BaseCollector) ProcessExponentialBackoff(err error) {
 	if err != nil {
 		if collector.Retrying == false {
-			log.Printf("Detected AWS is not available for queue %s", collector.SourceTopic)
+			log.Printf("Detected queue service is not available for queue %s", collector.SourceTopic)
 		}
 		collector.Retrying = true
 		collector.Retries = collector.Retries + 1
@@ -86,7 +84,7 @@ func (collector *BaseCollector) ProcessExponentialBackoff(err error) {
 		log.Printf("Error trying to receive messages from queue: %s, error: %s", collector.SourceTopic, err.Error())
 	} else {
 		if collector.Retrying {
-			log.Printf("Detected AWS is back online for queue %s", collector.SourceTopic)
+			log.Printf("Detected queue service is back online for queue %s", collector.SourceTopic)
 			collector.Retrying = false
 			collector.Retries = 0
 			collector.PollingPeriod = 0
@@ -96,7 +94,7 @@ func (collector *BaseCollector) ProcessExponentialBackoff(err error) {
 
 //processMessageResult - Workers requests processing
 func (collector *BaseCollector) ProcessMessageResult(msg MessageWrapper, result *Result) {
-	defer collector.AckMessage(msg.ReceiptHandle)
+	defer collector.AckMessage(msg)
 
 	message := &MessageWrapper{
 		MessageBody: msg.MessageBody,

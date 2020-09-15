@@ -110,6 +110,6 @@ func (collector *NsqCollector) PublishMessage(message *collectors.MessageWrapper
 }
 
 //AckMessage - Not needed for NSQ (Messages are not acknowledged
-func (collector *NsqCollector) AckMessage(receiptHandle string) error {
+func (collector *NsqCollector) AckMessage(message collectors.MessageWrapper) error {
 	return nil
 }

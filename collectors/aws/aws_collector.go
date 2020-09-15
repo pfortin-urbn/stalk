@@ -169,10 +169,10 @@ func (collector *SqsCollector) PublishMessage(message *collectors.MessageWrapper
 	return err
 }
 
-func (collector *SqsCollector) AckMessage(receiptHandle string) error {
+func (collector *SqsCollector) AckMessage(message collectors.MessageWrapper) error {
 	delParams := &sqs.DeleteMessageInput{
 		QueueUrl:      aws.String(collector.SourceTopic), // Required
-		ReceiptHandle: aws.String(receiptHandle),         // Required
+		ReceiptHandle: aws.String(message.ReceiptHandle), // Required
 	}
 	_, err := collector.SqsClient.DeleteMessage(delParams)
 	return err
