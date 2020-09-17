@@ -6,10 +6,12 @@ import (
 	"math"
 	"net/http"
 
-	uuid "github.com/satori/go.uuid"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 
 	"github.com/labstack/echo"
 	"github.com/labstack/echo/middleware"
+	"github.com/prometheus/client_golang/prometheus"
+	uuid "github.com/satori/go.uuid"
 )
 
 type BaseCollector struct {
@@ -35,6 +37,11 @@ type BaseCollector struct {
 	GetMessages                  func() ([]MessageWrapper, error)
 	PublishMessage               func(message *MessageWrapper, delaySeconds int64, errFlag bool) error
 	AckMessage                   func(message MessageWrapper) error
+
+	/* Stats */
+	MessagesProcessed prometheus.Counter
+	MessagesRetried   prometheus.Counter
+	MessagesFailed    prometheus.Counter
 }
 
 func CreateBaseCollector(collectorOptions CollectorOptions) *BaseCollector {
@@ -64,6 +71,23 @@ func CreateBaseCollector(collectorOptions CollectorOptions) *BaseCollector {
 		Sleep:                        collectorOptions.Sleep,
 		Wake:                         collectorOptions.Wake,
 	}
+
+	bc.MessagesProcessed = prometheus.NewCounter(prometheus.CounterOpts{
+		Name: "messages_received",
+		Help: "Number of messages processed.",
+	})
+	prometheus.MustRegister(bc.MessagesProcessed)
+	bc.MessagesRetried = prometheus.NewCounter(prometheus.CounterOpts{
+		Name: "messages_retried",
+		Help: "Number of messages with errors that were retried.",
+	})
+	prometheus.MustRegister(bc.MessagesRetried)
+	bc.MessagesFailed = prometheus.NewCounter(prometheus.CounterOpts{
+		Name: "messages_failed",
+		Help: "Number of messages placed on error queue.",
+	})
+	prometheus.MustRegister(bc.MessagesFailed)
+
 	//Start server for commands
 	go bc.collectorApi()
 
@@ -95,24 +119,19 @@ func (collector *BaseCollector) ProcessExponentialBackoff(err error) {
 //processMessageResult - Workers requests processing
 func (collector *BaseCollector) ProcessMessageResult(msg MessageWrapper, result *Result) {
 	defer collector.AckMessage(msg)
-
-	message := &MessageWrapper{
-		MessageBody: msg.MessageBody,
-		Retries:     msg.Retries,
-		Retry:       msg.Retry,
-		Fatal:       msg.Fatal,
-		Message:     msg.Message,
-	}
+	collector.MessagesProcessed.Add(1)
 
 	if result.Fatal || (result.Err != nil && result.Retry == true && msg.Retries >= collector.MaxRetries-1) {
 		//Publish to Error Queue
-		collector.PublishMessage(message, 0, true)
+		collector.MessagesFailed.Add(1)
+		collector.PublishMessage(&msg, 0, true)
 		return
 	}
 	if result.Err != nil && result.Retry {
 		//Publish to Source Queue
-		message.Retries++
-		collector.PublishMessage(message, collector.RetryIntervalSecs, false)
+		collector.MessagesRetried.Add(1)
+		msg.Retries++
+		collector.PublishMessage(&msg, collector.RetryIntervalSecs, false)
 	}
 }
 
@@ -142,6 +161,12 @@ func (collector *BaseCollector) collectorApi() {
 		return c.JSON(http.StatusOK, map[string]interface{}{
 			"sleeping": collector.Sleeping,
 		})
+	})
+	e.GET("/metrics", func(c echo.Context) error {
+		w := c.Response().Writer
+		r := c.Request()
+		promhttp.Handler().ServeHTTP(w, r)
+		return nil
 	})
 	// Start server
 	apiPort := collector.ApiPort

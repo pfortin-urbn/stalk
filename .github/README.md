@@ -1,7 +1,7 @@
 # Stalk
 ## The best part of the celery!!!  (who eats the leaves anyway)
 
-Generalized async message queue processing.  You Stalk app contains two parts the Collector, 
+Generalized async message queue processing.  Your Stalk app contains two parts the Collector, 
 which is provided for you, and the business logic, you provide this. `workers/app.go` shows a toy example.
 
 your business logic entry point simple has to abide by the simple interface:

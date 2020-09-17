@@ -1,8 +1,8 @@
 package main
 
 import (
-	"errors"
-	"fmt"
+	"log"
+
 	"github.com/pfortin-urbn/stalk/collectors"
 	"github.com/pfortin-urbn/stalk/collectors/aws"
 	"github.com/pfortin-urbn/stalk/collectors/google_pubsub"
@@ -10,10 +10,10 @@ import (
 )
 
 func businessLogic(msg []byte) *collectors.Result {
-	fmt.Printf("Business Logic - %s\n", string(msg))
+	log.Printf("Business Logic - %s\n", string(msg))
 	return &collectors.Result{
-		Err:   errors.New("boom"),
-		Retry: true,
+		Err:   nil,
+		Retry: false,
 		Fatal: false,
 	}
 }
@@ -71,10 +71,11 @@ func RunGooglePubSubCollector() {
 	var err error
 	var options = collectors.CollectorOptions{
 		//Google Project Id
-		AccountID:          "stalk-1599139247342",
+		AccountID:          "contrail-6d68d",
 		PollingLimit:       5,
 		PollingPeriod:      5,
 		MaxRetries:         3,
+		RetryIntervalSecs:  20,
 		SourceTopic:        "STALK-SOURCE-TOPIC",
 		SourceSubscription: "STALK-SOURCE-SUBSCRIPTION",
 		ErrorTopic:         "STALK-ERROR-TOPIC",
