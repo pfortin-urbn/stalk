@@ -1,19 +1,19 @@
 package main
 
 import (
-	"errors"
-	"fmt"
+	"log"
 
 	"github.com/pfortin-urbn/stalk/collectors"
 	"github.com/pfortin-urbn/stalk/collectors/aws"
+	"github.com/pfortin-urbn/stalk/collectors/google_pubsub"
 	"github.com/pfortin-urbn/stalk/collectors/nsq"
 )
 
 func businessLogic(msg []byte) *collectors.Result {
-	fmt.Println(string(msg))
+	log.Printf("Business Logic - %s\n", string(msg))
 	return &collectors.Result{
-		Err:   errors.New("boom"),
-		Retry: true,
+		Err:   nil,
+		Retry: false,
 		Fatal: false,
 	}
 }
@@ -65,8 +65,32 @@ func RunNsqCollector() {
 	sc.Wake()
 }
 
+// TODO - Add retry logic for connection timeouts (publish)
+func RunGooglePubSubCollector() {
+	var sc *google_pubsub.PubSubCollector
+	var err error
+	var options = collectors.CollectorOptions{
+		//Google Project Id
+		AccountID:          "contrail-6d68d",
+		PollingLimit:       5,
+		PollingPeriod:      5,
+		MaxRetries:         3,
+		RetryIntervalSecs:  20,
+		SourceTopic:        "STALK-SOURCE-TOPIC",
+		SourceSubscription: "STALK-SOURCE-SUBSCRIPTION",
+		ErrorTopic:         "STALK-ERROR-TOPIC",
+		BusinessProcessor:  businessLogic,
+	}
+	sc, err = google_pubsub.CreatePubSubCollector(options)
+	if err != nil {
+		panic(err)
+	}
+
+	sc.Wake()
+}
+
 func main() {
-	RunAwsCollector()
+	RunGooglePubSubCollector()
 
 	waitCh := make(chan bool)
 	<-waitCh
