@@ -61,6 +61,8 @@ func CreateSqsCollector(collectorOptions collectors.CollectorOptions) (*SqsColle
 	collectorOptions.AckMessage = sc.AckMessage
 	collectorOptions.GetMessages = sc.GetMessages
 	collectorOptions.PublishMessage = sc.PublishMessage
+	collectorOptions.Sleep = sc.Sleep
+	collectorOptions.Wake = sc.Wake
 
 	sc.BaseCollector = collectors.CreateBaseCollector(collectorOptions)
 	sc.SqsClient = client
