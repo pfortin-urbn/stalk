@@ -9,11 +9,11 @@ import (
 
 	"cloud.google.com/go/pubsub"
 
-	"github.com/pfortin-urbn/stalk/collectors"
+	"github.com/pfortin-urbn/stalk/subscribers"
 )
 
-type PubSubCollector struct {
-	*collectors.BaseCollector
+type PubSubSubScriber struct {
+	*subscribers.BaseSubscriber
 	PubSubClient *pubsub.Client
 	PollingLimit int
 
@@ -22,24 +22,24 @@ type PubSubCollector struct {
 	Subscript      *pubsub.Subscription
 }
 
-func CreatePubSubCollector(collectorOptions collectors.CollectorOptions) (*PubSubCollector, error) {
+func CreatePubSubSubscriber(subscriberOptions subscribers.SubscriberOptions) (*PubSubSubScriber, error) {
 	// gcloud credentials are in json file locally
-	client, err := pubsub.NewClient(context.Background(), collectorOptions.AccountID)
+	client, err := pubsub.NewClient(context.Background(), subscriberOptions.AccountID)
 	if err != nil {
 		return nil, err
 	}
 
-	c := &PubSubCollector{
+	c := &PubSubSubScriber{
 		PubSubClient: client,
-		PollingLimit: collectorOptions.PollingLimit,
+		PollingLimit: subscriberOptions.PollingLimit,
 	}
 
-	c.GCPSourceTopic = client.Topic(collectorOptions.SourceTopic)
-	c.GCPErrorTopic = client.Topic(collectorOptions.ErrorTopic)
+	c.GCPSourceTopic = client.Topic(subscriberOptions.SourceTopic)
+	c.GCPErrorTopic = client.Topic(subscriberOptions.ErrorTopic)
 
-	c.Subscript, err = client.CreateSubscription(context.Background(), collectorOptions.SourceSubscription, pubsub.SubscriptionConfig{
+	c.Subscript, err = client.CreateSubscription(context.Background(), subscriberOptions.SourceSubscription, pubsub.SubscriptionConfig{
 		Topic:                 c.GCPSourceTopic,
-		AckDeadline:           time.Duration(collectorOptions.RetryIntervalSecs) * time.Second,
+		AckDeadline:           time.Duration(subscriberOptions.RetryIntervalSecs) * time.Second,
 		RetainAckedMessages:   false,
 		EnableMessageOrdering: false,
 		DeadLetterPolicy: &pubsub.DeadLetterPolicy{
@@ -47,53 +47,53 @@ func CreatePubSubCollector(collectorOptions collectors.CollectorOptions) (*PubSu
 			MaxDeliveryAttempts: 5,
 		},
 		RetryPolicy: &pubsub.RetryPolicy{
-			MinimumBackoff: time.Duration(collectorOptions.RetryIntervalSecs),
-			MaximumBackoff: time.Duration(collectorOptions.RetryIntervalSecs),
+			MinimumBackoff: time.Duration(subscriberOptions.RetryIntervalSecs),
+			MaximumBackoff: time.Duration(subscriberOptions.RetryIntervalSecs),
 		},
 	})
 	if err != nil {
 		if strings.Contains(err.Error(), "Resource already exists") {
-			c.Subscript = client.Subscription(collectorOptions.SourceSubscription)
+			c.Subscript = client.Subscription(subscriberOptions.SourceSubscription)
 		} else {
 			panic(err)
 		}
 	}
 	c.Subscript.ReceiveSettings.MaxOutstandingMessages = 1
 
-	collectorOptions.AckMessage = c.AckMessage
-	collectorOptions.GetMessages = c.GetMessages
-	collectorOptions.PublishMessage = c.PublishMessage
-	collectorOptions.Sleep = c.Sleep
-	collectorOptions.Wake = c.Wake
+	subscriberOptions.AckMessage = c.AckMessage
+	subscriberOptions.GetMessages = c.GetMessages
+	subscriberOptions.PublishMessage = c.PublishMessage
+	subscriberOptions.Sleep = c.Sleep
+	subscriberOptions.Wake = c.Wake
 
-	c.BaseCollector = collectors.CreateBaseCollector(collectorOptions)
+	c.BaseSubscriber = subscribers.CreateBaseCollector(subscriberOptions)
 
 	go c.PollForMessages()
 	return c, nil
 }
 
-func (collector *PubSubCollector) Sleep() {
+func (collector *PubSubSubScriber) Sleep() {
 	log.Println("Sleeping")
 	collector.Sleeping = true
 }
 
-func (collector *PubSubCollector) Wake() {
+func (collector *PubSubSubScriber) Wake() {
 	log.Println("Waking up")
 	collector.Sleeping = false
 	go collector.timeout()
 }
 
-func (collector *PubSubCollector) timeout() {
+func (collector *PubSubSubScriber) timeout() {
 	time.Sleep(time.Duration(collector.PollingPeriod) * time.Millisecond)
 	collector.ChannelToInitiatePollRequest <- true
 }
 
-func (collector *PubSubCollector) PollForMessages() {
+func (collector *PubSubSubScriber) PollForMessages() {
 	go collector.timeout()
 	for {
 		select {
 		case <-collector.ChannelToInitiatePollRequest:
-			if !collector.BaseCollector.Sleeping {
+			if !collector.BaseSubscriber.Sleeping {
 				_, err := collector.GetMessages()
 				collector.ProcessExponentialBackoff(err)
 			}
@@ -104,7 +104,7 @@ func (collector *PubSubCollector) PollForMessages() {
 	}
 }
 
-func (collector *PubSubCollector) Handler(ctx context.Context, msg *pubsub.Message) {
+func (collector *PubSubSubScriber) Handler(ctx context.Context, msg *pubsub.Message) {
 	// If value is not present in map we send an empty string in here, which will result in a 0 int.
 	retries, _ := strconv.Atoi(msg.Attributes["retries"])
 	rightNow := time.Now()
@@ -117,7 +117,7 @@ func (collector *PubSubCollector) Handler(ctx context.Context, msg *pubsub.Messa
 
 	log.Printf("Got message: %q(%d)\n", string(msg.Data), retries)
 
-	wrappedMessage := collectors.MessageWrapper{
+	wrappedMessage := subscribers.MessageWrapper{
 		MessageBody: msg.Data,
 		Retries:     retries,
 		Retry:       true,
@@ -129,7 +129,7 @@ func (collector *PubSubCollector) Handler(ctx context.Context, msg *pubsub.Messa
 	collector.ProcessMessageResult(wrappedMessage, result)
 }
 
-func (collector *PubSubCollector) GetMessages() ([]collectors.MessageWrapper, error) {
+func (collector *PubSubSubScriber) GetMessages() ([]subscribers.MessageWrapper, error) {
 	var waitTimeSecs int64 = 10 //TODO make a collectorOption?
 	log.Printf("Get messages start")
 	ctx, _ := context.WithTimeout(context.Background(), time.Duration(waitTimeSecs)*time.Second)
@@ -141,7 +141,7 @@ func (collector *PubSubCollector) GetMessages() ([]collectors.MessageWrapper, er
 	return nil, err
 }
 
-func (collector *PubSubCollector) PublishMessage(message *collectors.MessageWrapper, delaySeconds int64, errFlag bool) error {
+func (collector *PubSubSubScriber) PublishMessage(message *subscribers.MessageWrapper, delaySeconds int64, errFlag bool) error {
 	ctx, _ := context.WithDeadline(context.Background(), time.Now().Add(600*time.Second))
 	topic := collector.GCPSourceTopic
 	topicName := collector.SourceTopic
@@ -179,7 +179,7 @@ func (collector *PubSubCollector) PublishMessage(message *collectors.MessageWrap
 	return nil
 }
 
-func (collector *PubSubCollector) AckMessage(message collectors.MessageWrapper) error {
+func (collector *PubSubSubScriber) AckMessage(message subscribers.MessageWrapper) error {
 	// Type assert here to make sure go knows what type we're talking about
 	//msg := message.Message.(*pubsub.Message)
 	message.Message.(*pubsub.Message).Ack()

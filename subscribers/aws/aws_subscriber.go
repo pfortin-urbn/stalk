@@ -2,6 +2,7 @@ package aws
 
 import (
 	"fmt"
+	"github.com/pfortin-urbn/stalk/subscribers"
 	"os"
 	"strconv"
 	"time"
@@ -9,22 +10,20 @@ import (
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/sqs"
-
-	"github.com/pfortin-urbn/stalk/collectors"
 )
 
 // Test with GoAWS!!!
 var Endpoint = os.Getenv("AWS_ENDPOINT") //SQS Proxy?
 
-type SqsCollector struct {
-	*collectors.BaseCollector
+type SqsSubscriber struct {
+	*subscribers.BaseSubscriber
 	SqsClient *sqs.SQS
 	scale     int
 }
 
-var sqsCollectors = make([]*SqsCollector, 0)
+var sqsCollectors = make([]*SqsSubscriber, 0)
 
-func CreateSqsCollector(collectorOptions collectors.CollectorOptions) (*SqsCollector, error) {
+func CreateSqsSubscriber(collectorOptions subscribers.SubscriberOptions) (*SqsSubscriber, error) {
 	awsConfig := &aws.Config{
 		Region: aws.String(collectorOptions.Region),
 	}
@@ -57,14 +56,14 @@ func CreateSqsCollector(collectorOptions collectors.CollectorOptions) (*SqsColle
 	}
 	collectorOptions.ErrorTopic = *response.QueueUrl //Replace the QueueName with the Queue URL
 
-	sc := &SqsCollector{}
+	sc := &SqsSubscriber{}
 	collectorOptions.AckMessage = sc.AckMessage
 	collectorOptions.GetMessages = sc.GetMessages
 	collectorOptions.PublishMessage = sc.PublishMessage
 	collectorOptions.Sleep = sc.Sleep
 	collectorOptions.Wake = sc.Wake
 
-	sc.BaseCollector = collectors.CreateBaseCollector(collectorOptions)
+	sc.BaseSubscriber = subscribers.CreateBaseCollector(collectorOptions)
 	sc.SqsClient = client
 
 	sc.scale = 1
@@ -86,16 +85,16 @@ func Scale(numCollectors int) bool {
 	return true
 }
 
-func (collector *SqsCollector) Sleep() {
+func (collector *SqsSubscriber) Sleep() {
 	collector.Sleeping = true
 }
 
-func (collector *SqsCollector) Wake() {
+func (collector *SqsSubscriber) Wake() {
 	collector.Sleeping = false
 	go collector.timeout()
 }
 
-func (collector *SqsCollector) timeout() {
+func (collector *SqsSubscriber) timeout() {
 	time.Sleep(time.Duration(collector.PollingPeriod) * time.Millisecond)
 	collector.ChannelToInitiatePollRequest <- true
 }
@@ -103,7 +102,7 @@ func (collector *SqsCollector) timeout() {
 // AWS SQS client requires you to pool for messages so the pool must
 // be aware of how to call the Library Methods for exponential backoff
 // and Process Message Results from the business logic
-func (collector *SqsCollector) PollForMessages() {
+func (collector *SqsSubscriber) PollForMessages() {
 	go collector.timeout()
 	for {
 		select {
@@ -124,7 +123,7 @@ func (collector *SqsCollector) PollForMessages() {
 	}
 }
 
-func (collector *SqsCollector) GetMessages() ([]collectors.MessageWrapper, error) {
+func (collector *SqsSubscriber) GetMessages() ([]subscribers.MessageWrapper, error) {
 	var waitTimeSecs int64 = 10
 	attributeName := "Retries"
 	params := &sqs.ReceiveMessageInput{
@@ -134,12 +133,12 @@ func (collector *SqsCollector) GetMessages() ([]collectors.MessageWrapper, error
 		WaitTimeSeconds:       &waitTimeSecs,
 	}
 	resp, err := collector.SqsClient.ReceiveMessage(params)
-	messages := make([]collectors.MessageWrapper, 0)
+	messages := make([]subscribers.MessageWrapper, 0)
 	if err == nil {
 		awsMessages := resp.Messages
 		for _, awsMessage := range awsMessages {
 			retries, _ := strconv.Atoi(*awsMessage.MessageAttributes["Retries"].StringValue)
-			messages = append(messages, collectors.MessageWrapper{
+			messages = append(messages, subscribers.MessageWrapper{
 				MessageBody:   []byte(*awsMessage.Body),
 				ReceiptHandle: *awsMessage.ReceiptHandle,
 				Retries:       retries,
@@ -151,7 +150,7 @@ func (collector *SqsCollector) GetMessages() ([]collectors.MessageWrapper, error
 	return messages, err
 }
 
-func (collector *SqsCollector) PublishMessage(message *collectors.MessageWrapper, delaySeconds int64, errFlag bool) error {
+func (collector *SqsSubscriber) PublishMessage(message *subscribers.MessageWrapper, delaySeconds int64, errFlag bool) error {
 	qUrl := collector.SourceTopic
 	if errFlag {
 		qUrl = collector.ErrorTopic
@@ -171,7 +170,7 @@ func (collector *SqsCollector) PublishMessage(message *collectors.MessageWrapper
 	return err
 }
 
-func (collector *SqsCollector) AckMessage(message collectors.MessageWrapper) error {
+func (collector *SqsSubscriber) AckMessage(message subscribers.MessageWrapper) error {
 	delParams := &sqs.DeleteMessageInput{
 		QueueUrl:      aws.String(collector.SourceTopic), // Required
 		ReceiptHandle: aws.String(message.ReceiptHandle), // Required

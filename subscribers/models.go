@@ -1,7 +1,7 @@
-package collectors
+package subscribers
 
 // Reads from pub//sub source when awake
-type Collector interface {
+type Subscriber interface {
 	Sleep()
 	Wake()
 	Scale(int) bool
@@ -25,7 +25,7 @@ type MessageWrapper struct {
 	Message       interface{}
 }
 
-type CollectorOptions struct {
+type SubscriberOptions struct {
 	CollectorId        string
 	PollingPeriod      int
 	MaxPollingPeriod   int

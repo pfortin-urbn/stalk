@@ -1,4 +1,4 @@
-package collectors
+package subscribers
 
 import (
 	"fmt"
@@ -14,8 +14,8 @@ import (
 	uuid "github.com/satori/go.uuid"
 )
 
-type BaseCollector struct {
-	Collector
+type BaseSubscriber struct {
+	Subscriber
 	CollectorId                  string
 	CollectorType                string
 	ChannelToInitiatePollRequest chan bool
@@ -44,12 +44,12 @@ type BaseCollector struct {
 	MessagesFailed    prometheus.Counter
 }
 
-func CreateBaseCollector(collectorOptions CollectorOptions) *BaseCollector {
+func CreateBaseCollector(collectorOptions SubscriberOptions) *BaseSubscriber {
 	collectorId := collectorOptions.CollectorId
 	if collectorId == "" {
 		collectorId = uuid.NewV4().String()
 	}
-	bc := &BaseCollector{
+	bc := &BaseSubscriber{
 		CollectorId:                  collectorId,
 		ChannelToInitiatePollRequest: make(chan bool),
 		ChannelDone:                  make(chan bool),
@@ -94,7 +94,7 @@ func CreateBaseCollector(collectorOptions CollectorOptions) *BaseCollector {
 	return bc
 }
 
-func (collector *BaseCollector) ProcessExponentialBackoff(err error) {
+func (collector *BaseSubscriber) ProcessExponentialBackoff(err error) {
 	if err != nil {
 		if collector.Retrying == false {
 			log.Printf("Detected queue service is not available for queue %s", collector.SourceTopic)
@@ -116,8 +116,8 @@ func (collector *BaseCollector) ProcessExponentialBackoff(err error) {
 	}
 }
 
-//processMessageResult - Workers requests processing
-func (collector *BaseCollector) ProcessMessageResult(msg MessageWrapper, result *Result) {
+// processMessageResult - Workers requests processing
+func (collector *BaseSubscriber) ProcessMessageResult(msg MessageWrapper, result *Result) {
 	defer collector.AckMessage(msg)
 	collector.MessagesProcessed.Add(1)
 
@@ -135,7 +135,7 @@ func (collector *BaseCollector) ProcessMessageResult(msg MessageWrapper, result 
 	}
 }
 
-func (collector *BaseCollector) collectorApi() {
+func (collector *BaseSubscriber) collectorApi() {
 	// Echo instance
 	e := echo.New()
 
